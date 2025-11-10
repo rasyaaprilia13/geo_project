@@ -36,6 +36,6 @@ Source code : pada startTracking
 <img width="410" height="254" alt="image" src="https://github.com/user-attachments/assets/874ce445-edc9-451b-903b-101fbd1a1ffc" />
 
 ## Hasil Akhir
-![WhatsApp Image 2025-11-10 at 21 15 16_56392399](https://github.com/user-attachments/assets/e16a12f5-93e1-4286-92cd-80413d6aae12)
-![WhatsApp Image 2025-11-10 at 21 15 17_cee772a0](https://github.com/user-attachments/assets/ac8c3e42-83df-4e05-b500-335ab0654466)
+![Screenshot_20251110_211921 1](https://github.com/user-attachments/assets/b07f11e5-569d-49cb-bae6-33a45cafabb7)
+![Screenshot_20251110_211925 1](https://github.com/user-attachments/assets/a724dc73-1eaa-4c51-bafd-92ddb355de7b)
 
