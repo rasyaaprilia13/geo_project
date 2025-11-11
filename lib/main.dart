@@ -30,15 +30,24 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   Position? _currentPosition;
   String? _errorMessage;
-  String? _currentAddress; 
+  String? _currentAddress;
   StreamSubscription<Position>? _positionStream;
 
+  // Variabel untuk menyimpan jarak ke PNB (Tugas 2)
+  String? _distanceToPNB; 
+  
+  // Koordinat Titik Tetap (Sydney, Australia)
+  final double pnbLat = -33.8688;   
+  final double pnbLng = 151.2093;
+
+  
   @override
   void dispose() {
     _positionStream?.cancel();
     super.dispose();
   }
 
+  // Fungsi untuk mendapatkan izin akses dan posisi awal
   Future<Position> _getPermissionAndLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -67,6 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   
+  // Fungsi untuk mendapatkan alamat dari koordinat (Geocoding)
   Future<void> _getAddressFromLatLng(Position position) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(
@@ -76,6 +86,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       Placemark place = placemarks[0];
       setState(() {
+        // Menggabungkan elemen alamat
         _currentAddress =
             "${place.street}, ${place.subLocality}, ${place.locality}, ${place.subAdministrativeArea}, ${place.administrativeArea}, ${place.country}";
       });
@@ -86,15 +97,39 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
- 
+  // Fungsi untuk menghitung jarak ke PNB dan update state (Tugas 2)
+  void _calculateDistanceToPNB(Position position) {
+    // Hitung jarak dalam meter
+    double distanceInMeters = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      pnbLat,
+      pnbLng,
+    );
+
+    // Konversi ke kilometer dan bulatkan 2 angka di belakang koma
+    double distanceInKm = distanceInMeters / 1000;
+    
+    // Simpan hasilnya di _distanceToPNB menggunakan setState
+    setState(() {
+      _distanceToPNB = "${distanceInKm.toStringAsFixed(2)} km"; 
+    });
+  }
+
+  
+  // tombol "Dapatkan Lokasi Sekarang" (Hanya ambil lokasi dan alamat)
   void _handleGetLocation() async {
     try {
       Position position = await _getPermissionAndLocation();
       setState(() {
         _currentPosition = position;
         _errorMessage = null;
+        // Jarak direset saat klik single shot, agar hanya tracking yang menampilkan
+        _distanceToPNB = null; 
       });
-      await _getAddressFromLatLng(position); // 🔹 Panggil fungsi geocoding
+      await _getAddressFromLatLng(position); 
+      
+      
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -102,7 +137,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
- 
+  
+  // tombol "Mulai Lacak" (Mulai stream posisi dan hitung jarak real-time)
   void _handleStartTracking() {
     _positionStream?.cancel();
 
@@ -112,6 +148,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
 
     try {
+      // untuk update posisi terus-menerus
       _positionStream = Geolocator.getPositionStream(
         locationSettings: locationSettings,
       ).listen((Position position) async {
@@ -119,7 +156,10 @@ class _MyHomePageState extends State<MyHomePage> {
           _currentPosition = position;
           _errorMessage = null;
         });
-        await _getAddressFromLatLng(position); // 🔹 Update alamat terus-menerus
+        await _getAddressFromLatLng(position); 
+        
+        // Panggil fungsi perhitungan jarak untuk update real-time (Tugas 2)
+        _calculateDistanceToPNB(position); 
       });
     } catch (e) {
       setState(() {
@@ -128,7 +168,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  //  Henti Lacak
+  // tombol "Henti Lacak"
   void _handleStopTracking() {
     _positionStream?.cancel();
     setState(() {
@@ -136,7 +176,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  // UI
+  // UI (Antarmuka Pengguna)
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -167,7 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
                       if (_currentPosition != null) ...[
                         Text(
-                          "Lat: ${_currentPosition!.latitude}\nLng: ${_currentPosition!.longitude}",
+                          "Lat: ${_currentPosition!.latitude.toStringAsFixed(7)}\nLng: ${_currentPosition!.longitude.toStringAsFixed(7)}",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 18,
@@ -186,6 +226,21 @@ class _MyHomePageState extends State<MyHomePage> {
                               ),
                             ),
                           ),
+                        
+                        // Tampilkan Jarak ke PNB (Hanya muncul saat _distanceToPNB terisi)
+                        if (_distanceToPNB != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16.0),
+                            child: Text(
+                              "Jarak ke PNB: $_distanceToPNB",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: const Color.fromARGB(255, 227, 38, 198), // Menyesuaikan style gambar
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                       ],
                     ],
                   ),
@@ -193,13 +248,20 @@ class _MyHomePageState extends State<MyHomePage> {
 
                 SizedBox(height: 32),
 
-               
+                
+                // Tombol Dapatkan Lokasi Sekarang
                 ElevatedButton.icon(
                   icon: Icon(Icons.location_searching),
                   label: Text('Dapatkan Lokasi Sekarang'),
                   onPressed: _handleGetLocation,
                   style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 40),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.purple,
+                    side: BorderSide(color: Colors.grey.shade300),
+                    minimumSize: Size(double.infinity, 50), 
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25.0),
+                    ),
                   ),
                 ),
                 SizedBox(height: 16),
@@ -208,20 +270,37 @@ class _MyHomePageState extends State<MyHomePage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    ElevatedButton.icon(
-                      icon: Icon(Icons.play_arrow),
-                      label: Text('Mulai Lacak'),
-                      onPressed: _handleStartTracking,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                    // Tombol Mulai Lacak
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.play_arrow),
+                        label: Text('Mulai Lacak'),
+                        onPressed: _handleStartTracking,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          minimumSize: Size(0, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25.0),
+                          ),
+                        ),
                       ),
                     ),
-                    ElevatedButton.icon(
-                      icon: Icon(Icons.stop),
-                      label: Text('Henti Lacak'),
-                      onPressed: _handleStopTracking,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                    SizedBox(width: 16),
+                    // Tombol Henti Lacak
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.stop),
+                        label: Text('Henti Lacak'),
+                        onPressed: _handleStopTracking,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          minimumSize: Size(0, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25.0),
+                          ),
+                        ),
                       ),
                     ),
                   ],
